@@ -181,6 +181,12 @@ const system={
               return dbs[name]
             }
           },
+
+          services:{
+            service(name){
+              return services[name]
+            }
+          },
           
           module:  function(name) {
 

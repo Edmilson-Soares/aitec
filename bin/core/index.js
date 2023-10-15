@@ -312,7 +312,7 @@ export default ({files})=>{
             },{},console.log)
             return Entities
         },
-        async loadServices({libs,module,commands,db,dbs,entities},path){
+        async loadServices({libs,module,commands,services,db,dbs,entities},path){
             const Services={}
             if(!files.exists(setting.plugins.files.services||'/src/app/services')){
                 return  Services
@@ -322,7 +322,7 @@ export default ({files})=>{
          
             await forawait.generate(files.paths(setting.plugins.files.services||'/src/app/services'),async(path_)=>{
                 await forawait.generate(files.paths((setting.plugins.files.services||'/src/app/services')+'/'+path_),async(file_)=>{
-                    const {name,service}=await this.serviceCore(path_,file_,{module,commands,libs,rx,db,dbs,entities})
+                    const {name,service}=await this.serviceCore(path_,file_,{module,services,commands,libs,rx,db,dbs,entities})
                     Services[name]= service
                     Services[name].rx = rx
                  },{},console.log)
