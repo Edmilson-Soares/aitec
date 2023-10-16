@@ -1,4 +1,3 @@
-
 import forawait from './forawait.js'
 //fs.readdirSync
 
@@ -24,6 +23,14 @@ export default ({files})=>{
             
       
         },
+        "seneca":{
+            url:'0.0.0.0:8000',
+            services:['user.create'],
+            clients:[{
+                url:'0.0.0.0:8000',
+                name:'auth'
+            }]
+        },
         "grpc":{
             "servers":{
    
@@ -42,6 +49,35 @@ export default ({files})=>{
 
     return {
         forawait,
+        setting,
+
+         seneca:async ({ services=[],url,services_app,Seneca})=>{
+            const seneca=Seneca()
+
+            
+         await forawait.generate(services||[],async(service)=>{
+            seneca.add('cmd:'+service,async ({data,token,cmd}, reply) => {
+                try {
+
+                    if(cmd!=service) return reply('ddd')
+
+                    if(!token) return reply('no im') 
+                    if(!services_app.service('app::'+service)) return reply(null,null) 
+
+                   const output=await services_app.service('app::'+service).execute(data)
+                   reply(null,output) 
+                } catch (error) {
+                    reply(error) 
+                }
+                
+              })
+          },{},console.log)
+       
+
+            seneca.listen({url})
+        
+        
+        },
 
         executeCommand:({services,execute,undo})=>({
             async execute(data,ops,tasks){
@@ -312,7 +348,7 @@ export default ({files})=>{
             },{},console.log)
             return Entities
         },
-        async loadServices({libs,module,commands,services,db,dbs,entities},path){
+        async loadServices({libs,module,seneca,commands,services,db,dbs,entities},path){
             const Services={}
             if(!files.exists(setting.plugins.files.services||'/src/app/services')){
                 return  Services
@@ -322,7 +358,7 @@ export default ({files})=>{
          
             await forawait.generate(files.paths(setting.plugins.files.services||'/src/app/services'),async(path_)=>{
                 await forawait.generate(files.paths((setting.plugins.files.services||'/src/app/services')+'/'+path_),async(file_)=>{
-                    const {name,service}=await this.serviceCore(path_,file_,{module,services,commands,libs,rx,db,dbs,entities})
+                    const {name,service}=await this.serviceCore(path_,file_,{seneca,module,services,commands,libs,rx,db,dbs,entities})
                     Services[name]= service
                     Services[name].rx = rx
                  },{},console.log)

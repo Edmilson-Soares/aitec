@@ -11,7 +11,7 @@
     "start": "node .",
     "dev": "nodemon ."
   },
-  "aitec":"app",
+  "aitec": "app1",
   "exports": {
     ".": {
       "import": "./index.js",
@@ -40,6 +40,7 @@
   },
   "devDependencies": {
     "prisma": "^4.11.0",
+    "seneca": "^3.32.1",
     "vitest": "^0.34.4"
   }
 }

@@ -3,6 +3,7 @@ import fs from 'fs';
 
 import coreSystem from './core/index.js'
 import path from 'path';
+
 let init_function={
   
   register: async(system) => {
@@ -11,6 +12,9 @@ let init_function={
   },
   bootstrap: async(system) => {
 
+  const test= await system.plugins('seneca').client('infra::seneca.auth').cmd('user.create',{name:'ddd'})
+
+  console.log(test)
 
   },
   distroy: async(system) => {
@@ -49,7 +53,7 @@ if(files.exists('/src/index.js')){
 
 
 const crons={}
-
+let Seneca=null
 
 const core=coreSystem({
     files,
@@ -62,6 +66,7 @@ let amqplib_conn=null
 let redis={}
 let redis_client=null
 let db=null;
+const client_seneca={}
 
 if(package_.dependencies['amqplib']){
  amqplib= await import('amqplib');
@@ -83,6 +88,12 @@ if(package_.dependencies['redis']){
   const { PrismaClient }= await import('@prisma/client')
    db= new PrismaClient()
 
+ }
+
+
+
+ if(package_.dependencies['seneca'] || package_.devDependencies['seneca']){
+  Seneca= (await import('seneca')).default
  }
 
 const system={
@@ -157,6 +168,9 @@ const system={
       
 
 
+
+
+
       const libsSystem=   await core.loadLibsSystem(process.env)
 
       const libs= {forawait:core.forawait,...libsSystem,redis_client,redis,rabbitmq:amqplib_conn,amqplib,...(await core.loadLibs(process.env))}
@@ -173,9 +187,16 @@ const system={
         }
       })
 
+      
+
 
       const services=   await core.loadServices({
           libs,
+          seneca:{
+            client(name){
+              return client_seneca['infra::seneca.'+name]
+            }
+          },
           dbs:{
             db(name){
               return dbs[name]
@@ -306,6 +327,11 @@ const system={
         libs,
         rabbitmq:amqplib_conn,
         redis:redis_client,
+        seneca:{
+          client(name){
+            return client_seneca['infra::seneca.'+name]
+          }
+        },
         module:  function(name) {
 
 
@@ -383,6 +409,11 @@ const system={
             return services[name]
           }
         },
+        seneca:{
+          client(name){
+            return client_seneca['infra::seneca.'+name]
+          }
+        },
         module:  function(name) {
 
 
@@ -447,6 +478,7 @@ const system={
 
   const modules= await core.loadModules({
     libs,
+
     services:{
       service(name){
         return services[name]
@@ -455,10 +487,19 @@ const system={
   })
   
 
+
+
+
   const plugins={
     libs:{
       lib(name){
         return libs[name.split('core::libs.')[1]]
+      }
+    },
+    seneca:{
+      client(name){
+        console.log(name,client_seneca)
+        return client_seneca[name]
       }
     },
     services:{
@@ -495,8 +536,6 @@ const system={
     },
     modules:{
       module:  function(name) {
-
-
         return {
           rx:modules[name].rx,
           async  execute(metudo,data,{rx}){
@@ -535,7 +574,7 @@ const system={
 
          /////
 
-            }
+          }
         }
      },
     },
@@ -561,14 +600,66 @@ const system={
 
 
  
-       if(init_function.bootstrap){
-            await init_function.bootstrap({
-              env:process.env,
-              plugins(name){
-                return plugins[name]
-              }
+
+
+
+        if(Seneca&&core.setting.seneca){
+
+          if(core.setting.seneca.url||process.env.SENECA_URL){
+            await core.seneca({
+              Seneca,
+              services_app:{
+                service(name){
+                  return services[name]
+                }
+              },
+              url:core.setting.seneca.url||process.env.SENECA_URL,
+              ...core.setting.seneca
             })
+          }
+
+
+
+
+         await core.forawait.generate(core.setting.seneca.clients||[],async(client_)=>{
+
+       
+            if(!client_.name&&!client_.url) return null
+             const client=({url})=>{
+              const client= Seneca().client({url})
+              return {
+                async cmd(name,data){
+                   return  new Promise((resolve, ) => {
+                       client.act({ cmd:name,data,token:process.env.APP_SECRET||'test'}, function (err, result) {
+                           if (err) return reject(err)
+                           resolve(result)
+                         })
+                   })
+                 }
+              }
+
+            }
+
+              client_seneca['infra::seneca.'+client_.name]=await client({url:client_.url})
+           
+
+          },{},console.log)
+
+
+  
         }
+
+
+
+
+        if(init_function.bootstrap){
+          await init_function.bootstrap({
+            env:process.env,
+            plugins(name){
+              return plugins[name]
+            }
+          })
+      }
 
 
         
