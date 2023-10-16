@@ -66,6 +66,8 @@ let amqplib_conn=null
 let redis={}
 let redis_client=null
 let db=null;
+let Seneca=null
+const client_seneca={}
 
 if(package_.dependencies['amqplib']){
  amqplib= await import('amqplib');
@@ -87,6 +89,10 @@ if(package_.dependencies['redis']){
   const { PrismaClient }= await import('@prisma/client')
    db= new PrismaClient()
 
+ }
+
+ if(package_.dependencies['seneca'] || package_.devDependencies['seneca']){
+  Seneca= (await import('seneca')).default
  }
 
 const system={
@@ -182,6 +188,11 @@ const system={
           dbs:{
             db(name){
               return dbs[name]
+            }
+          },
+          seneca:{
+            client(name){
+              return client_seneca[name]
             }
           },
           services:{
@@ -308,6 +319,11 @@ const system={
         libs,
         rabbitmq:amqplib_conn,
         redis:redis_client,
+        seneca:{
+          client(name){
+            return client_seneca[name]
+          }
+        },
         io:()=>http.io,
         module:  function(name) {
 
@@ -385,6 +401,11 @@ const system={
         services:{
           service(name){
             return services[name]
+          }
+        },
+        seneca:{
+          client(name){
+            return client_seneca[name]
           }
         },
         module:  function(name) {
@@ -475,6 +496,11 @@ const system={
     libs:{
       lib(name){
         return libs[name.split('core::libs.')[1]]
+      }
+    },
+    seneca:{
+      client(name){
+        return client_seneca[name]
       }
     },
     services:{
@@ -612,6 +638,41 @@ const system={
   
 
           ///////////////////////////////////////
+
+
+
+
+
+          if(Seneca&&core.setting.seneca){
+
+
+           await core.forawait.generate(core.setting.seneca.clients||[],async(client_)=>{
+  
+         
+              if(!client_.name&&!client_.url) return null
+               const client=({url})=>{
+                const client= Seneca().client({url})
+                return {
+                  async cmd(name,data){
+                     return  new Promise((resolve, ) => {
+                         client.act({ cmd:name,data,token:process.env.APP_SECRET||'test'}, function (err, result) {
+                             if (err) return reject(err)
+                             resolve(result)
+                           })
+                     })
+                   }
+                }
+  
+              }
+  
+                client_seneca['infra::seneca.'+client_.name]=await client({url:client_.url})
+             
+  
+            },{},console.log)
+  
+  
+    
+          }
 
 
  

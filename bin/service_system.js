@@ -53,7 +53,7 @@ if(files.exists('/src/index.js')){
 
 
 const crons={}
-let Seneca=null
+
 
 const core=coreSystem({
     files,
@@ -66,6 +66,7 @@ let amqplib_conn=null
 let redis={}
 let redis_client=null
 let db=null;
+let Seneca=null
 const client_seneca={}
 
 if(package_.dependencies['amqplib']){
@@ -194,7 +195,7 @@ const system={
           libs,
           seneca:{
             client(name){
-              return client_seneca['infra::seneca.'+name]
+              return client_seneca[name]
             }
           },
           dbs:{
@@ -329,7 +330,7 @@ const system={
         redis:redis_client,
         seneca:{
           client(name){
-            return client_seneca['infra::seneca.'+name]
+            return client_seneca[name]
           }
         },
         module:  function(name) {
@@ -411,7 +412,7 @@ const system={
         },
         seneca:{
           client(name){
-            return client_seneca['infra::seneca.'+name]
+            return client_seneca[name]
           }
         },
         module:  function(name) {
@@ -498,7 +499,6 @@ const system={
     },
     seneca:{
       client(name){
-        console.log(name,client_seneca)
         return client_seneca[name]
       }
     },
